@@ -3,9 +3,18 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <motion.header 
@@ -18,7 +27,8 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           <motion.div 
             whileHover={{ scale: 1.05 }}
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 cursor-pointer"
+            onClick={() => navigate('/')}
           >
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">EM</span>
@@ -42,14 +52,43 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" className="text-gray-600 hover:text-blue-600">
-              Sign In
-            </Button>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg">
-                Start Free Trial
-              </Button>
-            </motion.div>
+            {user ? (
+              <>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-600 hover:text-blue-600"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Dashboard
+                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    variant="outline"
+                    onClick={handleSignOut}
+                  >
+                    Sign Out
+                  </Button>
+                </motion.div>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-600 hover:text-blue-600"
+                  onClick={() => navigate('/auth')}
+                >
+                  Sign In
+                </Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+                    onClick={() => navigate('/auth')}
+                  >
+                    Start Free Trial
+                  </Button>
+                </motion.div>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -86,12 +125,52 @@ const Header = () => {
                   </motion.a>
                 ))}
                 <div className="pt-4 space-y-2">
-                  <Button variant="ghost" className="w-full justify-start">
-                    Sign In
-                  </Button>
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700">
-                    Start Free Trial
-                  </Button>
+                  {user ? (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start"
+                        onClick={() => {
+                          navigate('/dashboard');
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Dashboard
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => {
+                          handleSignOut();
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Sign Out
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start"
+                        onClick={() => {
+                          navigate('/auth');
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Sign In
+                      </Button>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700"
+                        onClick={() => {
+                          navigate('/auth');
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        Start Free Trial
+                      </Button>
+                    </>
+                  )}
                 </div>
               </nav>
             </motion.div>

@@ -9,6 +9,155 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      campaign_stats: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          id: string
+          total_bounced: number | null
+          total_clicked: number | null
+          total_delivered: number | null
+          total_opened: number | null
+          total_sent: number | null
+          total_unsubscribed: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          total_bounced?: number | null
+          total_clicked?: number | null
+          total_delivered?: number | null
+          total_opened?: number | null
+          total_sent?: number | null
+          total_unsubscribed?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          total_bounced?: number | null
+          total_clicked?: number | null
+          total_delivered?: number | null
+          total_opened?: number | null
+          total_sent?: number | null
+          total_unsubscribed?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_stats_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          name: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          name: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      subscribers: {
+        Row: {
+          email: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          status: string | null
+          subscribed_at: string | null
+          tags: string[] | null
+          unsubscribed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          email: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          status?: string | null
+          subscribed_at?: string | null
+          tags?: string[] | null
+          unsubscribed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          email?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          status?: string | null
+          subscribed_at?: string | null
+          tags?: string[] | null
+          unsubscribed_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       Users: {
         Row: {
           created_at: string
