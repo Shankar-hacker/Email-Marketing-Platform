@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useForm } from 'react-hook-form';
-import { Users, Plus, Mail, UserX, LogOut } from 'lucide-react';
+import { Users, Plus, Mail, UserX, LogOut, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,8 +34,11 @@ const Subscribers = () => {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingSubscriber, setIsAddingSubscriber] = useState(false);
+  const [editingSubscriber, setEditingSubscriber] = useState<Subscriber | null>(null);
+  const [isUpdatingSubscriber, setIsUpdatingSubscriber] = useState(false);
   
   const { register, handleSubmit, reset, formState: { errors } } = useForm<SubscriberForm>();
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue, formState: { errors: editErrors } } = useForm<SubscriberForm>();
 
   useEffect(() => {
     if (user) {
@@ -93,6 +97,40 @@ const Subscribers = () => {
     }
   };
 
+  const onUpdateSubmit = async (data: SubscriberForm) => {
+    if (!editingSubscriber) return;
+
+    setIsUpdatingSubscriber(true);
+    try {
+      const { error } = await supabase
+        .from('subscribers')
+        .update({
+          email: data.email,
+          first_name: data.first_name || null,
+          last_name: data.last_name || null,
+        })
+        .eq('id', editingSubscriber.id);
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('This email is already taken by another subscriber');
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success('Subscriber updated successfully');
+        setEditingSubscriber(null);
+        resetEdit();
+        fetchSubscribers();
+      }
+    } catch (error) {
+      console.error('Error updating subscriber:', error);
+      toast.error('Failed to update subscriber');
+    } finally {
+      setIsUpdatingSubscriber(false);
+    }
+  };
+
   const unsubscribeUser = async (subscriberId: string) => {
     try {
       const { error } = await supabase
@@ -110,6 +148,34 @@ const Subscribers = () => {
       console.error('Error unsubscribing user:', error);
       toast.error('Failed to unsubscribe user');
     }
+  };
+
+  const deleteSubscriber = async (subscriberId: string) => {
+    try {
+      const { error } = await supabase
+        .from('subscribers')
+        .delete()
+        .eq('id', subscriberId);
+
+      if (error) throw error;
+      toast.success('Subscriber deleted successfully');
+      fetchSubscribers();
+    } catch (error) {
+      console.error('Error deleting subscriber:', error);
+      toast.error('Failed to delete subscriber');
+    }
+  };
+
+  const startEdit = (subscriber: Subscriber) => {
+    setEditingSubscriber(subscriber);
+    setValue('email', subscriber.email);
+    setValue('first_name', subscriber.first_name || '');
+    setValue('last_name', subscriber.last_name || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingSubscriber(null);
+    resetEdit();
   };
 
   const handleSignOut = async () => {
@@ -201,6 +267,50 @@ const Subscribers = () => {
           </CardContent>
         </Card>
 
+        {/* Edit Subscriber Form */}
+        {editingSubscriber && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Edit className="h-5 w-5" />
+                <span>Edit Subscriber</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitEdit(onUpdateSubmit)} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                  <Input
+                    placeholder="Email address"
+                    type="email"
+                    {...registerEdit('email', { required: 'Email is required' })}
+                  />
+                  {editErrors.email && (
+                    <p className="text-red-500 text-sm mt-1">{editErrors.email.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    placeholder="First name (optional)"
+                    {...registerEdit('first_name')}
+                  />
+                </div>
+                <div>
+                  <Input
+                    placeholder="Last name (optional)"
+                    {...registerEdit('last_name')}
+                  />
+                </div>
+                <Button type="submit" disabled={isUpdatingSubscriber}>
+                  {isUpdatingSubscriber ? 'Updating...' : 'Update'}
+                </Button>
+                <Button type="button" variant="outline" onClick={cancelEdit}>
+                  Cancel
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Subscribers Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
@@ -283,15 +393,45 @@ const Subscribers = () => {
                         {new Date(subscriber.subscribed_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {subscriber.status === 'active' && (
+                        <div className="flex space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => unsubscribeUser(subscriber.id)}
+                            onClick={() => startEdit(subscriber)}
                           >
-                            Unsubscribe
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        )}
+                          {subscriber.status === 'active' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => unsubscribeUser(subscriber.id)}
+                            >
+                              Unsubscribe
+                            </Button>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Subscriber</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this subscriber? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteSubscriber(subscriber.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

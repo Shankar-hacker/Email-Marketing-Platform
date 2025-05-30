@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useForm } from 'react-hook-form';
-import { Mail, Plus, Send, Clock, CheckCircle, LogOut } from 'lucide-react';
+import { Mail, Plus, Send, Clock, CheckCircle, LogOut, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,8 +36,11 @@ const Campaigns = () => {
   const [loading, setLoading] = useState(true);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+  const [isUpdatingCampaign, setIsUpdatingCampaign] = useState(false);
   
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CampaignForm>();
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, setValue, formState: { errors: editErrors } } = useForm<CampaignForm>();
 
   useEffect(() => {
     if (user) {
@@ -91,6 +95,34 @@ const Campaigns = () => {
     }
   };
 
+  const onUpdateSubmit = async (data: CampaignForm) => {
+    if (!editingCampaign) return;
+
+    setIsUpdatingCampaign(true);
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .update({
+          name: data.name,
+          subject: data.subject,
+          content: data.content,
+        })
+        .eq('id', editingCampaign.id);
+
+      if (error) throw error;
+      
+      toast.success('Campaign updated successfully');
+      setEditingCampaign(null);
+      resetEdit();
+      fetchCampaigns();
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      toast.error('Failed to update campaign');
+    } finally {
+      setIsUpdatingCampaign(false);
+    }
+  };
+
   const sendCampaign = async (campaignId: string) => {
     try {
       // First, check if there are any subscribers
@@ -134,6 +166,38 @@ const Campaigns = () => {
       console.error('Error sending campaign:', error);
       toast.error('Failed to send campaign');
     }
+  };
+
+  const deleteCampaign = async (campaignId: string) => {
+    try {
+      const { error } = await supabase
+        .from('campaigns')
+        .delete()
+        .eq('id', campaignId);
+
+      if (error) throw error;
+      toast.success('Campaign deleted successfully');
+      fetchCampaigns();
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      toast.error('Failed to delete campaign');
+    }
+  };
+
+  const startEdit = (campaign: Campaign) => {
+    if (campaign.status === 'sent') {
+      toast.error('Cannot edit a campaign that has already been sent');
+      return;
+    }
+    setEditingCampaign(campaign);
+    setValue('name', campaign.name);
+    setValue('subject', campaign.subject);
+    setValue('content', campaign.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingCampaign(null);
+    resetEdit();
   };
 
   const handleSignOut = async () => {
@@ -272,6 +336,62 @@ const Campaigns = () => {
           </Card>
         )}
 
+        {/* Edit Campaign Form */}
+        {editingCampaign && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Edit className="h-5 w-5" />
+                <span>Edit Campaign</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitEdit(onUpdateSubmit)} className="space-y-4">
+                <div>
+                  <Input
+                    placeholder="Campaign name"
+                    {...registerEdit('name', { required: 'Campaign name is required' })}
+                  />
+                  {editErrors.name && (
+                    <p className="text-red-500 text-sm mt-1">{editErrors.name.message}</p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    placeholder="Email subject line"
+                    {...registerEdit('subject', { required: 'Subject is required' })}
+                  />
+                  {editErrors.subject && (
+                    <p className="text-red-500 text-sm mt-1">{editErrors.subject.message}</p>
+                  )}
+                </div>
+                <div>
+                  <textarea
+                    className="w-full min-h-32 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Email content (HTML supported)"
+                    {...registerEdit('content', { required: 'Content is required' })}
+                  />
+                  {editErrors.content && (
+                    <p className="text-red-500 text-sm mt-1">{editErrors.content.message}</p>
+                  )}
+                </div>
+                <div className="flex space-x-4">
+                  <Button type="submit" disabled={isUpdatingCampaign}>
+                    {isUpdatingCampaign ? 'Updating...' : 'Update Campaign'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Campaign Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -360,16 +480,48 @@ const Campaigns = () => {
                         {new Date(campaign.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {campaign.status === 'draft' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => sendCampaign(campaign.id)}
-                          >
-                            <Send className="h-4 w-4 mr-1" />
-                            Send
-                          </Button>
-                        )}
+                        <div className="flex space-x-2">
+                          {campaign.status === 'draft' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => startEdit(campaign)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendCampaign(campaign.id)}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                Send
+                              </Button>
+                            </>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this campaign? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteCampaign(campaign.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
