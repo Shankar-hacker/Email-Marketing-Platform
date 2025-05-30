@@ -52,7 +52,7 @@ const Subscribers = () => {
         .from('subscribers')
         .select('*')
         .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+        .order('subscribed_at', { ascending: false });
 
       if (error) throw error;
       setSubscribers(data || []);
