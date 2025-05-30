@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Subscribers from "./pages/Subscribers";
+import Campaigns from "./pages/Campaigns";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -25,6 +27,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/subscribers" 
+        element={
+          <ProtectedRoute>
+            <Subscribers />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/campaigns" 
+        element={
+          <ProtectedRoute>
+            <Campaigns />
           </ProtectedRoute>
         } 
       />
